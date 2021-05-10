@@ -8,6 +8,7 @@
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
+#include <arpa/inet.h>
 
 #include "KnownManufacturers.hpp"
 #include "MACAdress.hpp"

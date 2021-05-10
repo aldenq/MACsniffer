@@ -10,4 +10,7 @@ src/objects/KnownManufacturers.o: src/KnownManufacturers.txt src/KnownManufactur
 	${CC} ${OPT} ${STD} -c src/KnownManufacturers.cpp -o src/objects/KnownManufacturers.o
 
 MACSniffer: src/objects/KnownManufacturers.o
-	${CC} ${OPT} ${STD} ${WARNS} ${FILE} ${OUT}
+	${CC} ${OPT} ${STD} ${WARNS} ${FILE} ${OUT} ${LIBS}
+
+all : MACSniffer
+	

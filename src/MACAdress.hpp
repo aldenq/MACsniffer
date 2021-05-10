@@ -12,8 +12,10 @@ class MACAdress{
     MACAdress(const MACAdress& other) = default;
     MACAdress(unsigned long long int number) noexcept : m_base(number) {}
 
-    int getManufacturerCode() const noexcept {
-        return m_base & 0b111111111111111111111111;
+    unsigned long long int 
+    getManufacturerCode() const noexcept {
+        // This method looks unintuitive, but it is because the MAC address only occupies 6 of m_base's 8 bytes.
+        return ((m_base << 16) >> 40);
     }
 
     const char* getManufacturerName() const noexcept {
