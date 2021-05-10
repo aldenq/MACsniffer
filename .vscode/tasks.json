@@ -10,6 +10,7 @@
                 "-Wall",
                 "-Wextra",
                 "-Werror",
+                "${workspaceFolder}/src/objects/KnownManufacturers.o",
                 "-g",
                 "${workspaceFolder}/src/main.cpp",
                 "-o",
