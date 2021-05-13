@@ -14,7 +14,7 @@
                 "${workspaceFolder}/src/main.cpp",
                 "-o",
                 "${workspaceFolder}/dist/debug.out",
-                "${workspaceFolder}/src/objects/KnownManufacturers.o",
+                "${workspaceFolder}/dist/objects/KnownManufacturers.o",
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

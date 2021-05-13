@@ -12,4 +12,10 @@
 
 #include "KnownManufacturers.hpp"
 #include "MACAdress.hpp"
+#include "Location.hpp"
 #include "Device.hpp"
+#include "Database/Database.hpp"
+
+
+#include "Location.cpp"
+#include "MACAdress.cpp"
