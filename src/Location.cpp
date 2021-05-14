@@ -8,6 +8,9 @@ bool Location::operator==(const Location& other) const noexcept{
     return other.latitude==latitude && longitude==other.longitude;
 }
 
+Location& Location::operator=(const Location& other) noexcept
+  { longitude=other.longitude; latitude=other.latitude; return *this; }
+
 namespace std{
     std::size_t hash<Location>::operator()(const Location& l) const {
         // The two doubles for long/lat are converted to floats

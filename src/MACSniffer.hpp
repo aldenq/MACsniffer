@@ -17,6 +17,7 @@
 #include <sstream>
 #include <exception>
 #include <assert.h>
+#include <hashtable.h>
 
 #define MACSNIFFER_MACROVERSION 0x01
 #define MACSNIFFER_VERSION 0x0100

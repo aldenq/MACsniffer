@@ -10,6 +10,8 @@ class Location{
     Location(const Location& l) = default;
     Location(Location&& l) = default;
 
+    Location& operator = (const Location& other) noexcept;
+
     bool withinRangeOf(const Location& other, double range) const noexcept;
     bool operator==(const Location& other) const noexcept;
 

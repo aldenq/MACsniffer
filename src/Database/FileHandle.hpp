@@ -1,6 +1,6 @@
 namespace Database{
 
-    #define DEVICE_STATIC_LOCATION_LIMIT 10
+    #define DEVICE_STATIC_LOCATION_LIMIT 1
 
     /**
      * 
@@ -85,8 +85,8 @@ namespace Database{
 
         MACAdress mac;
         size_t locationCount;
-        size_t locations[DEVICE_STATIC_LOCATION_LIMIT];
-        FileheapPtr extraLocations;
+        std::vector<size_t> locations;
+
     };
 
 

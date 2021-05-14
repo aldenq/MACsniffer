@@ -13,7 +13,10 @@ namespace Database{
 
         FileHeader fh;
         f.write((char*)&fh, sizeof(fh));
-
+        FileHeaderMap fhm;
+        fhm.lastDevice = sizeof(FileHeader);
+        fhm.lastLocation = sizeof(FileHeader)+sizeof(size_t);
+        
 
     }
 
@@ -85,11 +88,21 @@ namespace Database{
         size_t cpos = cachefileStream.tellg();
         seekToDevice(m, cachefileStream, cachefileHeaderMap);
         FileDeviceNodeHeader fdnh{};
-        cachefileStream.read((char*)&cachefileStream, sizeof(FileDeviceNodeHeader));
+        cachefileStream.read((char*)&fdnh.mac, sizeof(fdnh.mac));
+        cachefileStream.read((char*)&fdnh.locationCount, sizeof(fdnh.locationCount));
+        
+        while(fdnh.locationCount){
+            size_t reader = 0;
+            cachefileStream.read((char*)&reader, sizeof(size_t));
+            fdnh.locationCount--;
+            fdnh.locations.push_back(reader);
+        }
+
+
         cachefileStream.seekg(cpos);
 
         dest->addr = fdnh.mac;
-        for(size_t i = 0; i < fdnh.locationCount; i++){
+        for(size_t i = 0; i < fdnh.locations.size(); i++){
             Location locloader;
             _loadSingleLocation( fdnh.locations[i], &locloader );
             dest->locations.push_back(locloader);
@@ -105,14 +118,24 @@ namespace Database{
 
     }
     void load(const MACAdress& m, DeviceMap& dest){
-
-
         
-
+        Device holder;
+        _loadSingleDevice(m, &holder );
+        dest[m] = holder;
 
     }
 
-    void deposit(const Device& d);
+    void deposit(const Device& d){
+
+        try{
+            seekToDevice(d.addr, cachefileStream, cachefileHeaderMap.devicePositionMap);
+        }catch (const NoDeviceError& e) {
+
+            cachefileHeaderMap.lastDevice
+
+        }
+
+    }
     void add(const Device& d);
 
 

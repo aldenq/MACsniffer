@@ -1,5 +1,9 @@
 namespace Database{
 
+    void flushCache();
+    void demoteFlushCache();
+    void precache(std::vector<MACAdress> macs);
+
     void addNewDevice(const Device&& d);
     
     [[nodiscard]] Device 
