@@ -13,100 +13,56 @@ namespace Database{
      *  FileHeader {
      *      id, version, devices, locations
      *  }
-     *  LocationsMap {
-     *      {index, position}
-     *      {index, position}
-     *      ...
-     *  }
-     *  DevicesMap {
-     *      {MACAdress, position}
-     *      {MACAdress, position}
-     *  }
-     * 
-     *  Devices{
-     *      mac,
-     *      locationCount,
-     *      Locations {
-     *          index,
-     *          index
-     *          ...
-     *      }
-     *      Heap* extraLocations
-     *  }
-     * 
-     *  Locations {
-     *      {long, lat},
-     *      {long, lat},
-     *      {long, lat}
-     *  }
      *  
+     * locations.maccache:
+     *  This will store a contiguous array of all locations, which may be indexed
+     *  by mac files.
      * 
-     *  Heap {
-     *      ...
-     *  }
-     * 
-     *  ^ The heap is used to store extra stuff that doesn't fit in any of the other fields.
-     * For example, if a given device has been seen in more than (x) number of places maybe the 
-     * run-on locations start getting stored there. The heap is indexed through other fields in 
-     * the file.
+     *  <macadress>.macdevicecache:
+     *  This will store a single device, and all of its analyzed properties.
      * 
      */
     
     typedef size_t FileheapPtr;
+    typedef int    DBErr_t; // 0 = success, !0 = fail
+
+    const DBErr_t DBSuccess = 0;
+    const DBErr_t DBFailure = 1;
 
 
     struct FileHeader{
 
         char ftid[16] = "MACSnifferCache";
         int version = MACSNIFFER_VERSIONNO;
-        size_t devices = 0;
-        size_t locations = 0;
+        size_t size = sizeof(ftid)+sizeof(version);
 
 
     };
 
-    struct FileHeaderMap{
+    struct DeviceFileHeader{
+
+    };
+
+    struct LocationFileHeader{
         
-        // Map a location index to the position in the file
-        std::unordered_map<size_t, size_t> locationIndexPositionMap;
-        size_t lastLocation = 0;
-        // Map a mac adress to that device's position in the file
-        std::unordered_map<MACAdress, size_t> devicePositionMap;
-        size_t lastDevice = 0;
-
-        [[nodiscard]]
-        char* write() const noexcept;
-
-    };
-
-    struct FileDeviceNodeHeader{
-
-        FileDeviceNodeHeader() = default;
-
-        MACAdress mac;
-        size_t locationCount;
-        std::vector<size_t> locations;
-
     };
 
 
+    void init();
+
+    DBErr_t createCache(const std::filesystem::path& _folder);
+
+    DBErr_t createCacheFile(const std::filesystem::path& p);
+    DBErr_t openCachefile(std::fstream& f);
+    DBErr_t loadHeader(std::fstream& f);
+
+    DBErr_t loadLocationFile();
+    DBErr_t addLocation();
+
+    DBErr_t load(const MACAdress& m, DeviceMap& dest);
+    DBErr_t deposit(const Device& d);
 
 
-    void createCacheFile(const std::filesystem::path& p);
-    void openCachefile(std::fstream& f);
-    void loadHeaders(std::fstream& f);
 
-
-    void seekToDevice(const MACAdress& m, std::fstream& f, const FileHeaderMap& map);
-    void seekToLocation(size_t index, std::fstream& f, const FileHeaderMap& map);
-
-
-
-    void _loadSingleDevice(const MACAdress& m, Device* dest);
-    void _loadSingleLocation(size_t index, Location* dest);
-    void load(const MACAdress& m, DeviceMap& dest);
-
-    void deposit(const Device& d);
-    void add(const Device& d);
 
 };

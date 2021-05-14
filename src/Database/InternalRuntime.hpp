@@ -19,11 +19,10 @@ namespace Database{
     DeviceMap reserved;
 
     
-    std::filesystem::path cachefilePath;
-    std::fstream cachefileStream;
-
-    FileHeader cachefileHeader;
-    FileHeaderMap cachefileHeaderMap;
+    std::filesystem::path folder;
+    std::filesystem::path locationStorage;
+    
+    std::fstream locationStream;
 
 
     

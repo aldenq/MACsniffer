@@ -11,6 +11,5 @@ namespace Database{
 
     void checkin(const Device& d);
 
-    void setFile(const std::filesystem::path& f);
 
 };
