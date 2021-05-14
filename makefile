@@ -1,4 +1,4 @@
-CC = g++
+CC = g++-10
 OPT = -O3
 STD = -std=gnu++20
 WARNS = -Wall -Wextra -Werror

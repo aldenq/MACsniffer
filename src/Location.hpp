@@ -11,6 +11,15 @@ class Location{
     Location(Location&& l) = default;
 
     bool withinRangeOf(const Location& other, double range) const noexcept;
+    bool operator==(const Location& other) const noexcept;
 
 
+
+};
+
+namespace std{
+    template<>
+    struct hash<Location>{
+        std::size_t operator()(const Location& l) const;
+    };
 };

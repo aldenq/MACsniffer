@@ -16,6 +16,18 @@ class MACAdress{
     const char* getManufacturerName() const noexcept;
     bool operator == (const MACAdress& other) const noexcept;
     bool operator != (const MACAdress& other) const noexcept;
+    unsigned long long int raw() const noexcept;
+    unsigned getByte(size_t b) const noexcept;
 
+    explicit operator std::string() const noexcept;
+
+};
+
+namespace std{
+    template<>
+    class hash<MACAdress>{
+        public:
+        std::size_t operator()(const MACAdress& m) const;
+    };
 
 };
