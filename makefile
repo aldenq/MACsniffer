@@ -2,7 +2,7 @@ CC = g++-10
 OPT = -O3
 STD = -std=gnu++20
 WARNS = -Wall -Wextra -Werror
-LIBS = dist/objects/KnownManufacturers.o
+LIBS = dist/objects/KnownManufacturers.o -lpthread
 FILE = src/main.cpp
 OUT = -o dist/build.out
 

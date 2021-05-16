@@ -25,6 +25,9 @@ namespace Database{
     };
     
     MappedCachefile current_cachefile;
+
+    async::EventLoop fileTasks(1);
+    
     
 
 };

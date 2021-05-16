@@ -15,6 +15,7 @@
                 "-o",
                 "${workspaceFolder}/dist/debug.out",
                 "${workspaceFolder}/dist/objects/KnownManufacturers.o",
+                "-lpthread"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

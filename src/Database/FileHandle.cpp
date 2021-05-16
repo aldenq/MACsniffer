@@ -60,6 +60,29 @@ namespace Database{
 
 
 
+    FilePtrdiff FileHeaderMap::getDevicesEnd(  ){
+
+        auto min = std::min_element( 
+            devicePositionMap.begin(), 
+            devicePositionMap.end(), 
+            [](auto a, auto b){ 
+                return a.second < b.second;
+            } 
+        );
+
+        if (min != devicePositionMap.end()){
+            return min->second + sizeOfWrittenDevice(min->second);
+        }else {
+            return -1;
+        }
+
+
+
+    }
+
+
+
+
 
     dberr_t createNewCachefile(const std::filesystem::path& p){
 
@@ -133,7 +156,6 @@ namespace Database{
             perror("Could not seek: ");
             return DBFAILURE;
         }
-        std::cout << len_file << "\n";
         // seek back to start
         if ( lseek64(f, 0, SEEK_SET) == -1 ) {
             perror("Could not seek: ");
@@ -181,9 +203,153 @@ namespace Database{
 
     }
 
+    Location _base_loadLocation(size_t index){
+
+        FilePtr ptr = current_cachefile.locations.start + ( index * sizeof(Location) );
+        return *(Location*)(ptr);
+
+    }
+
+
+    Device _base_loadDevice(MACAdress mac){
+
+        FilePtrdiff pos = current_cachefile.headerMap.devicePositionMap[mac];
+
+        FilePtr fdevice = current_cachefile.map.start + pos;
+        FileDeviceNodeHeader * fdnh = (FileDeviceNodeHeader*) fdevice;
+
+
+        size_t locations = fdnh->locationCount;
+        fdevice += sizeof(fdnh);
+
+        Device out;
+        out.addr = mac;
+        std::cout << locations << std::endl;
+        for (;  locations;
+                locations --,
+                fdevice += sizeof(size_t)
+            )
+        {
+            out.locations.push_back( _base_loadLocation( *(size_t*)(fdevice) ) );
+        }
+
+        return out;
+    }
+    size_t sizeToWrite(const Device& d){
+        return sizeof(d.addr) + (d.locations.size() * sizeof(size_t));
+    }
+    size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh ){
+        return sizeof(fdnh->mac) + (fdnh->locationCount * sizeof(size_t));
+    }
+    size_t sizeOfWrittenDevice( FilePtrdiff off ){
+        return sizeOfWrittenDevice( (FileDeviceNodeHeader*) current_cachefile.map.start + off );
+    }
+
+
+
+
+
+    void _base_writeDevice(const Device& d){
+        FilePtr address = nullptr;
+        size_t sizeToWriteThis = sizeToWrite(d);
+        if (deviceExists(d.addr)){
+
+            FilePtrdiff existingLocation = current_cachefile.headerMap.devicePositionMap[d.addr];
+
+            if (sizeOfWrittenDevice(existingLocation) == sizeToWriteThis){
+                address = current_cachefile.map.start + existingLocation;
+            }else {
+                //resize
+            }
+
+        }else{
+            // Get the location of the end of the final device in the file
+            FilePtrdiff newspot = current_cachefile.headerMap.getDevicesEnd();
+
+            current_cachefile.header->devices ++;
+            current_cachefile.headerMap.devices ++;
+
+            // Normal conditions:
+            if (newspot != -1ULL){
+                address = current_cachefile.map.start + newspot;
+            // When there are no existing devices:
+            }else{
+                address = current_cachefile.devices.start;
+            }
+
+            size_t extraspace = current_cachefile.devices.end - (address + sizeToWriteThis);
+            if (extraspace <= 0) {
+                // resize
+            }
+
+            current_cachefile.headerMap.devicePositionMap[d.addr] = address - current_cachefile.map.start;
+
+        }
+
+        FileDeviceNodeHeader* fdnh = (FileDeviceNodeHeader*) address;
+        fdnh->mac = d.addr;
+        fdnh->locationCount = d.locations.size();
+        address += sizeof(FileDeviceNodeHeader);
+
+        for ( 
+                size_t i = 0;
+                i < d.locations.size();
+                i ++,
+                address += sizeof(size_t)     
+            )
+        {
+
+            *(size_t*)(address) = _base_createLocationIndex(d.locations.at(i));
+
+        }
+
+
+
+
+
+
+    }
+    size_t _base_createLocationIndex(const Location& l){
+
+        FilePtr liter = current_cachefile.locations.start;
+        size_t i;
+        for ( 
+                i = 0;
+                i < current_cachefile.header->locations;
+                i ++,
+                liter += sizeof(Location)
+            )
+        {
+            if (((Location*)(liter)) -> withinRangeOf(l, LOCATION_RANGE_THRESHOLD) ) {
+
+                return i;
+
+            }
+        }
+
+        // No existing locations were found, a new one needs to be allocated
+        if (liter < current_cachefile.locations.end){
+
+            *(Location*)(liter) = l;
+            current_cachefile.header->locations++;
+
+        }else{
+            // resize
+        }
+        
+        
+        return i+1;
+
+    }
+
+
 
     void cleanExit(){
-        
+
+        fileTasks.join();
+
+        current_cachefile.headerMap.writeToMemory( (FilePtr) current_cachefile.header + sizeof(FileHeader) );
+
         munmap(current_cachefile.map.start, current_cachefile.map.size());
         close(current_cachefile.fd);
 

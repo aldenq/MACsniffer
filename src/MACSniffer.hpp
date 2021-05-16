@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include "async/async.hpp"
 
 #define MACSNIFFER_MACROVERSION 0x01
 #define MACSNIFFER_VERSION 0x0100

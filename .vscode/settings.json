@@ -58,6 +58,11 @@
         "set": "cpp",
         "ratio": "cpp",
         "iomanip": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "variant": "cpp"
     }
 }

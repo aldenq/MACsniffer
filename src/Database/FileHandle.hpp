@@ -6,6 +6,8 @@ namespace Database{
     #define ANTIFRAG_PADDSIZE_HUGE 512
     #define FILEMODE S_IRWXU | S_IRGRP | S_IROTH
 
+    #define LOCATION_RANGE_THRESHOLD 0.000900900901 // 100 meters 
+
     /**
      * 
      * Definitions:
@@ -74,6 +76,7 @@ namespace Database{
         void writeToMemory(char* dest) const;
         size_t getWrittenSize() const noexcept;
         size_t loadFromMemory(const char* source);
+        FilePtrdiff getDevicesEnd();
 
     };
 
@@ -83,18 +86,23 @@ namespace Database{
 
         MACAdress mac;
         size_t locationCount;
-        std::vector<size_t> locations;
 
     };
 
+    size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh );
+    size_t sizeOfWrittenDevice( FilePtrdiff off );
+    size_t sizeToWrite(const Device& d);
 
     void setFile(const std::filesystem::path& p);
 
     dberr_t createNewCachefile(const std::filesystem::path& p);
     dberr_t loadCacheFile(const std::filesystem::path& p); 
 
-    
+    Device _base_loadDevice(MACAdress mac);
+    Location _base_loadLocation(size_t index);
 
+    void _base_writeDevice(const Device& d);
+    size_t _base_createLocationIndex(const Location& l);
 
     void cleanExit();
     
