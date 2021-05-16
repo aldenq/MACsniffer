@@ -1,23 +1,30 @@
 namespace Database{
 
-    #define DEVICE_STATIC_LOCATION_LIMIT 1
+    #define BASE_PAGESIZE 4096
+    #define MIN_CACHESIZE (BASE_PAGESIZE*8)
+    #define ANTIFRAG_PADDSIZE 64
+    #define ANTIFRAG_PADDSIZE_HUGE 512
+    #define FILEMODE S_IRWXU | S_IRGRP | S_IROTH
 
     /**
      * 
      * Definitions:
      *  -position:
      *      A position in this context refers to a file read position.
+     *  - antifrag paddsize / paddsize huge
+     *      A certain amount of padding space is placed between different fields to allow them
+     *      to grow without moving the whole file around
+     *  - device mapping
+     *      A pair of one MACAdress and one FilePtrdiff (size_t) that shows where
+     *      each device is located in the file. e.g:  { aa:aa:aa:aa:aa:aa : 0x23c8ae  }
+     * 
      * 
      * File Format:
      * 
      *  FileHeader {
      *      id, version, devices, locations
      *  }
-     *  LocationsMap {
-     *      {index, position}
-     *      {index, position}
-     *      ...
-     *  }
+     *  
      *  DevicesMap {
      *      {MACAdress, position}
      *      {MACAdress, position}
@@ -31,7 +38,6 @@ namespace Database{
      *          index
      *          ...
      *      }
-     *      Heap* extraLocations
      *  }
      * 
      *  Locations {
@@ -41,18 +47,10 @@ namespace Database{
      *  }
      *  
      * 
-     *  Heap {
-     *      ...
-     *  }
-     * 
-     *  ^ The heap is used to store extra stuff that doesn't fit in any of the other fields.
-     * For example, if a given device has been seen in more than (x) number of places maybe the 
-     * run-on locations start getting stored there. The heap is indexed through other fields in 
-     * the file.
      * 
      */
     
-    typedef size_t FileheapPtr;
+
 
 
     struct FileHeader{
@@ -67,15 +65,15 @@ namespace Database{
 
     struct FileHeaderMap{
         
-        // Map a location index to the position in the file
-        std::unordered_map<size_t, size_t> locationIndexPositionMap;
-        size_t lastLocation = 0;
+        size_t devices = 0;
         // Map a mac adress to that device's position in the file
-        std::unordered_map<MACAdress, size_t> devicePositionMap;
-        size_t lastDevice = 0;
+        std::unordered_map<MACAdress, FilePtrdiff> devicePositionMap;
+        FilePtrdiff locationsPosition = 0;
+        FilePtrdiff devicesPosition = 0;
 
-        [[nodiscard]]
-        char* write() const noexcept;
+        void writeToMemory(char* dest) const;
+        size_t getWrittenSize() const noexcept;
+        size_t loadFromMemory(const char* source);
 
     };
 
@@ -90,23 +88,15 @@ namespace Database{
     };
 
 
+    void setFile(const std::filesystem::path& p);
+
+    dberr_t createNewCachefile(const std::filesystem::path& p);
+    dberr_t loadCacheFile(const std::filesystem::path& p); 
+
+    
 
 
-    void createCacheFile(const std::filesystem::path& p);
-    void openCachefile(std::fstream& f);
-    void loadHeaders(std::fstream& f);
-
-
-    void seekToDevice(const MACAdress& m, std::fstream& f, const FileHeaderMap& map);
-    void seekToLocation(size_t index, std::fstream& f, const FileHeaderMap& map);
-
-
-
-    void _loadSingleDevice(const MACAdress& m, Device* dest);
-    void _loadSingleLocation(size_t index, Location* dest);
-    void load(const MACAdress& m, DeviceMap& dest);
-
-    void deposit(const Device& d);
-    void add(const Device& d);
+    void cleanExit();
+    
 
 };

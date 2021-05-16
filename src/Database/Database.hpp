@@ -2,7 +2,18 @@
 
 namespace Database{
 
+
+
     typedef std::unordered_map<MACAdress, Device> DeviceMap; 
+    typedef char* FilePtr;
+    typedef size_t FilePtrdiff;
+    typedef int fd_t;
+    
+    enum dberr_t {
+        DBSUCCESS,
+        DBFAILURE,
+        DBOLDFILE
+    };
 
 
     class DatabaseError : std::exception {
@@ -24,7 +35,7 @@ namespace Database{
     class NoCachefileError : DatabaseError {
         public:
         NoCachefileError(const std::filesystem::path& p) 
-            : DatabaseError("Could not open file: "+p.generic_string()) {}
+            : DatabaseError("Could not open or create file: "+p.generic_string()) {}
     };
 
     class NoDeviceError : DatabaseError {

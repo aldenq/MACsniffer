@@ -18,6 +18,13 @@
 #include <exception>
 #include <assert.h>
 #include <hashtable.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #define MACSNIFFER_MACROVERSION 0x01
 #define MACSNIFFER_VERSION 0x0100

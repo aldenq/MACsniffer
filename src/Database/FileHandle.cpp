@@ -1,142 +1,194 @@
 namespace Database{
+    char* passnone(char* x) { return x;}
+    void FileHeaderMap::writeToMemory(char* dest) const {
+        // Copy each field into memory:
+        char* ogdest = dest; passnone(ogdest); 
+        // copy devices
+        memcpy(dest, &devices, sizeof(devices));
+        dest+= sizeof(devices);
+        
+        // Copy each mapped pair
+        for (auto& pair : devicePositionMap){
+            // First & second are copied seperate to overcome ABI breaks / inconsistent implimentations
+            memcpy(dest, &pair.first, sizeof(pair.first));
+            dest += sizeof(pair.first);
+            
+            memcpy(dest, &pair.second, sizeof(pair.second));
+            dest += sizeof(pair.second);
+        }
+        // copy locationsPosition
+        *(FilePtrdiff*)dest = locationsPosition;
+        //memcpy(dest, &locationsPosition, sizeof(locationsPosition));
+        dest += sizeof(locationsPosition);
+        *(FilePtrdiff*)dest = devicesPosition;
 
-    void createCacheFile(const std::filesystem::path& p){
+    }
 
-        std::ofstream f;
+    size_t FileHeaderMap::getWrittenSize() const noexcept {
+        // Number of mapped devices * size of one mapping = number of bytes
+        size_t mappedDevices = devicePositionMap.size();
+        // Sum: Devices field, locations/devices Pos fields, number of mapped devices * the size of one device mapping
+        //                                                                             ^ each is one MACAdress and one size_t
+        //
+        return sizeof(devices) + sizeof(locationsPosition) + sizeof(devicesPosition) + (mappedDevices * (  sizeof(MACAdress)+sizeof(size_t)  ));
+
+    }
+
+    size_t FileHeaderMap::loadFromMemory(const char* source) {
+        // Copy in devices field
+        memcpy(&devices, source, sizeof(devices));
+        source += sizeof(devices);
+
+        // The number of devices given determines the number of device maps that will follow:
+        for (   size_t i = 0 ; 
+                i < devices ; 
+                i ++, 
+                source += sizeof(MACAdress) + sizeof(size_t) 
+            ) 
+        {   
+            // Copy in the mapping.
+            MACAdress * mac = (MACAdress*) source;
+            size_t    * position = (size_t*) source + sizeof(MACAdress);
+            devicePositionMap[ *mac ] = *position;
+        }
+
+        memcpy(&locationsPosition, source, sizeof(locationsPosition));
+        source += sizeof(locationsPosition);
+        memcpy(&devicesPosition, source, sizeof(devicesPosition));
+        return getWrittenSize();
+    }
+
+
+
+
+    dberr_t createNewCachefile(const std::filesystem::path& p){
+
+        // Open / create the new cache file
+        FILE* f = fopen64(p.c_str(), "w+");
+        if (!f) {
+            std::cerr << "Could not open file: " << p; perror(": ");
+            return DBFAILURE;
+        }
+
+        // Create a default header to put in the start of the file
+        FileHeader basic_header;
+        // Write the header
+        fwrite( &basic_header, sizeof(FileHeader), 1, f );
+        if (ferror(f)){
+            perror("Could not write: ");
+            return DBFAILURE;
+        }
+
+        // Create the default headermap to copy into the file 
+        FileHeaderMap emptyMap;
+        emptyMap.devices = 0;
+        emptyMap.devicesPosition = sizeof(FileHeader) + emptyMap.getWrittenSize() + ANTIFRAG_PADDSIZE_HUGE;
+        std::cout << "devices pos: " << emptyMap.devicesPosition << "\n";
+        emptyMap.locationsPosition = MIN_CACHESIZE - (MIN_CACHESIZE/4);
 
         
-
-        f.open(p);
-        if ( !f.is_open() ) {
-            throw NoCachefileError(cachefilePath);
+        // copy the default header into the file:
+        // {
+        size_t headerMapSize =  emptyMap.getWrittenSize();
+        char* buff = (char*) malloc(headerMapSize);
+        emptyMap.writeToMemory(buff);
+        fwrite(buff, headerMapSize, 1, f );
+        if (ferror(f)){
+            perror("Could not write: ");
+            return DBFAILURE;
         }
-
-        FileHeader fh;
-        f.write((char*)&fh, sizeof(fh));
-        FileHeaderMap fhm;
-        fhm.lastDevice = sizeof(FileHeader);
-        fhm.lastLocation = sizeof(FileHeader)+sizeof(size_t);
+        // }
         
+        // Truncate the file to the minimum cache size ( will grow the file with zeros )
+        int err = ftruncate64(fileno(f), MIN_CACHESIZE);
+        if (err) { // error check
+            std::cerr << "Could not truncate: " << strerror(errno) << std::endl;
+            return DBFAILURE;
+        }
+
+        // cleanup
+        fclose(f);
+        free( buff );
+        return DBSUCCESS;
 
     }
 
-    void openCachefile(std::fstream& f){
-        
-        f.open(cachefilePath, std::ios::in | std::ios::out);
-        if ( !f.is_open() ) {
-            throw NoCachefileError(cachefilePath);
+    
+
+    dberr_t loadCacheFile(const std::filesystem::path& p){
+        // Open the file for r/w
+        fd_t f = open64(p.c_str(), O_RDWR, FILEMODE);
+        //FILE* f = fopen64(p.c_str(), "a");
+        if (!f) {
+            std::cerr << "Could not open file: " << p; perror(": ");
+            return DBFAILURE;
         }
 
-    }
+        // Determine the file's size:
 
-    void loadHeaders(std::fstream& f){
 
-        f.seekg(0);
-        f.read((char*)&cachefileHeader, sizeof(FileHeader));
-        if (cachefileHeader.version != MACSNIFFER_VERSIONNO){
-            // do something when versions don't match
+        // seek to end
+        ssize_t len_file;
+        if ( (len_file = lseek64(f, 0, SEEK_END)) == -1 ) {
+            perror("Could not seek: ");
+            return DBFAILURE;
         }
-
-        for(size_t i = 0; i < cachefileHeader.locations;i++){
-            std::pair<size_t, size_t> locationMapNode;
-            f.read((char*)&locationMapNode,sizeof(locationMapNode));
-            cachefileHeaderMap.locationIndexPositionMap[locationMapNode.first] = locationMapNode.second;
-        }
-
-        for (size_t i = 0; i < cachefileHeader.devices; i++){
-            std::pair<MACAdress,size_t> macIndexnode;
-            f.read((char*)&macIndexnode, sizeof(macIndexnode));
-            cachefileHeaderMap.devicePositionMap[macIndexnode.first] = macIndexnode.second;
-        }
-
-
-    }
-
-
-    void seekToDevice(const MACAdress& m, std::fstream& f, const FileHeaderMap& map)
-    {
-        assert(f.is_open());
-
-        auto maybePos = map.devicePositionMap.find(m);
-        if (maybePos != map.devicePositionMap.end()){
-            size_t filepos = maybePos->second;
-            f.seekg(filepos);
-        }else{
-            throw NoDeviceError(m);
+        std::cout << len_file << "\n";
+        // seek back to start
+        if ( lseek64(f, 0, SEEK_SET) == -1 ) {
+            perror("Could not seek: ");
+            return DBFAILURE;
         }
         
+        // Map the file to memory, at address fptr
+        FilePtr fptr = (FilePtr) mmap64(NULL, len_file,PROT_READ|PROT_WRITE,MAP_SHARED,(f),0);
+        if (fptr == MAP_FAILED){
+            std::cerr << "Could not map memory"; perror(" : ");
+            return DBFAILURE;
+        }
 
-    }
-    void seekToLocation(size_t index, std::fstream& f, const FileHeaderMap& map){
+        // Load data into the current_cachefile variable:
 
-        assert(f.is_open());
+        current_cachefile.fd = f;
+        current_cachefile.map.start = fptr;
+        current_cachefile.map.end = fptr + len_file;
+        current_cachefile.header = (FileHeader*) fptr;
         
-        auto maybePos = map.locationIndexPositionMap.find( index );
-        if (maybePos != map.locationIndexPositionMap.end()){
-            size_t filepos = maybePos->second;
-            f.seekg(filepos);
-        } else {
-            throw DatabaseError("Could not find location at index: "+std::to_string(index));
+        current_cachefile.headerMap.loadFromMemory( fptr + sizeof(FileHeader) );
+
+        current_cachefile.devices.start = fptr + current_cachefile.headerMap.devicesPosition;
+        current_cachefile.locations.start = fptr + current_cachefile.headerMap.locationsPosition;
+        current_cachefile.devices.end = current_cachefile.locations.start;
+        current_cachefile.locations.end = current_cachefile.map.end;
+
+        return DBSUCCESS;
+
+    }
+
+    void setFile(const std::filesystem::path& p) {
+        if ( !std::filesystem::exists(p) ) {
+            std::clog << "Creating new file: " << p << "\n";
+            dberr_t err = createNewCachefile(p);
+            if (err == DBFAILURE){
+                throw NoCachefileError(p);
+            }
+        }
+        dberr_t err = loadCacheFile(p);
+        if (err == DBFAILURE){
+          throw NoCachefileError(p);
         }
 
 
     }
 
 
-
-    void _loadSingleDevice(const MACAdress& m, Device* dest){
-        size_t cpos = cachefileStream.tellg();
-        seekToDevice(m, cachefileStream, cachefileHeaderMap);
-        FileDeviceNodeHeader fdnh{};
-        cachefileStream.read((char*)&fdnh.mac, sizeof(fdnh.mac));
-        cachefileStream.read((char*)&fdnh.locationCount, sizeof(fdnh.locationCount));
+    void cleanExit(){
         
-        while(fdnh.locationCount){
-            size_t reader = 0;
-            cachefileStream.read((char*)&reader, sizeof(size_t));
-            fdnh.locationCount--;
-            fdnh.locations.push_back(reader);
-        }
-
-
-        cachefileStream.seekg(cpos);
-
-        dest->addr = fdnh.mac;
-        for(size_t i = 0; i < fdnh.locations.size(); i++){
-            Location locloader;
-            _loadSingleLocation( fdnh.locations[i], &locloader );
-            dest->locations.push_back(locloader);
-        }
-
-    }
-    void _loadSingleLocation(size_t index, Location* dest){
-
-        size_t cpos = cachefileStream.tellg();
-        seekToLocation(index, cachefileStream, cachefileHeaderMap);
-        cachefileStream.read((char*)dest, sizeof(Location));
-        cachefileStream.seekg(cpos);
-
-    }
-    void load(const MACAdress& m, DeviceMap& dest){
-        
-        Device holder;
-        _loadSingleDevice(m, &holder );
-        dest[m] = holder;
+        munmap(current_cachefile.map.start, current_cachefile.map.size());
+        close(current_cachefile.fd);
 
     }
 
-    void deposit(const Device& d){
-
-        try{
-            seekToDevice(d.addr, cachefileStream, cachefileHeaderMap.devicePositionMap);
-        }catch (const NoDeviceError& e) {
-
-            cachefileHeaderMap.lastDevice
-
-        }
-
-    }
-    void add(const Device& d);
 
 
 };

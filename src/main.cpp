@@ -6,11 +6,9 @@
 int main(){
 
 
-    Database::createCacheFile("dist/dump/maccache.MACSniffer");
     Database::setFile("dist/dump/maccache.MACSniffer");
-
-    Database::add(Device(MACAdress(12345), {}));
-
+    
+    Database::cleanExit();
 
     return 0;
 }
