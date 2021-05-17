@@ -4,4 +4,6 @@ namespace Database{
 
     async::Promise<Device> getDevice(MACAdress mac);
 
+    void writeDevice(Device d);
+
 };

@@ -242,7 +242,7 @@ namespace Database{
         return sizeof(d.addr) + (d.locations.size() * sizeof(size_t));
     }
     size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh ){
-        return sizeof(fdnh->mac) + (fdnh->locationCount * sizeof(size_t));
+        return sizeof(fdnh->mac) + (fdnh->locationCount * sizeof(size_t)) + sizeof(fdnh->locationCount);
     }
     size_t sizeOfWrittenDevice( FilePtrdiff off ){
         return sizeOfWrittenDevice( (FileDeviceNodeHeader*) current_cachefile.map.start + off );

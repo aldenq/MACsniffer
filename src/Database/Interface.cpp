@@ -18,6 +18,15 @@ namespace Database{
 
     }
 
+    void writeDevice(Device d){
+
+        fileTasks.launch ( [d](){
+
+            _base_writeDevice(d);
+
+        } );
+
+    }
 
 
 
