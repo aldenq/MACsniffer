@@ -208,8 +208,10 @@ namespace Database{
 
     Location _base_loadLocation(size_t index){
 
-        FilePtr ptr = current_cachefile.locations.start + ( index * sizeof(Location) );
-        return *(Location*)(ptr);
+        //FilePtr ptr = current_cachefile.locations.start + ( index * sizeof(Location) );
+        //return *(Location*)(ptr);
+
+        return ((Location*)current_cachefile.locations.start) [ index ];
 
     }
 
@@ -223,16 +225,18 @@ namespace Database{
 
 
         size_t locations = fdnh->locationCount;
-        fdevice += sizeof(fdnh);
+        fdevice += sizeof(FileDeviceNodeHeader);
 
         Device out;
         out.addr = mac;
+        fdevice += sizeof(MACAdress);
         std::cout << locations << std::endl;
         for (;  locations;
                 locations --,
                 fdevice += sizeof(size_t)
             )
         {
+            std::cout << "Location index: " << *(size_t*)(fdevice) << std::endl;
             out.locations.push_back( _base_loadLocation( *(size_t*)(fdevice) ) );
         }
 
@@ -293,7 +297,7 @@ namespace Database{
         fdnh->mac = d.addr;
         fdnh->locationCount = d.locations.size();
         address += sizeof(FileDeviceNodeHeader);
-
+        size_t *indexes = (size_t*)address;
         for ( 
                 size_t i = 0;
                 i < d.locations.size();
@@ -302,7 +306,8 @@ namespace Database{
             )
         {
 
-            *(size_t*)(address) = _base_createLocationIndex(d.locations.at(i));
+            // *(size_t*)(address) = _base_createLocationIndex(d.locations.at(i));
+            indexes[i] = _base_createLocationIndex(d.locations.at(i));
 
         }
 
@@ -314,34 +319,32 @@ namespace Database{
     }
     size_t _base_createLocationIndex(const Location& l){
 
-        FilePtr liter = current_cachefile.locations.start;
+        Location* locationArray = (Location*) current_cachefile.locations.start;
         size_t i;
         for ( 
                 i = 0;
                 i < current_cachefile.header->locations;
-                i ++,
-                liter += sizeof(Location)
+                i ++
             )
         {
-            if (((Location*)(liter)) -> withinRangeOf(l, LOCATION_RANGE_THRESHOLD) ) {
-
+            if (locationArray[i].withinRangeOf(l, LOCATION_RANGE_THRESHOLD) ) {
                 return i;
 
             }
         }
-
         // No existing locations were found, a new one needs to be allocated
-        if (liter < current_cachefile.locations.end){
+        if (&locationArray[i] < (Location*) current_cachefile.locations.end){
 
-            *(Location*)(liter) = l;
+            locationArray[i] = l;
             current_cachefile.header->locations++;
+            return current_cachefile.header->locations-1;
 
         }else{
             // resize
         }
         
         
-        return i+1;
+        return i;
 
     }
 

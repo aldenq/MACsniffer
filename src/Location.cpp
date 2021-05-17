@@ -1,6 +1,7 @@
 
 
 bool Location::withinRangeOf(const Location& other, double range) const noexcept {
+    if (*this==other) return true;
     return sqrt((longitude-other.longitude)*(longitude-other.longitude)+(latitude-other.latitude)*(latitude-other.latitude)) < range;
 }
 
@@ -26,3 +27,7 @@ namespace std{
         return out;
     }
 };
+
+std::ostream& operator << (std::ostream& o, const Location& l){
+    return o << "{ " << l.longitude << " , " << l.latitude << " }";
+}

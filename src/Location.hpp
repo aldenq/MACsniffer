@@ -25,3 +25,6 @@ namespace std{
         std::size_t operator()(const Location& l) const;
     };
 };
+
+
+std::ostream& operator << (std::ostream& o, const Location& l);
