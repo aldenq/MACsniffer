@@ -3,7 +3,7 @@
         {
             "type": "cppbuild",
             "label": "C/C++: g++ build active file",
-            "command": "/usr/bin/g++",
+            "command": "/usr/bin/g++-10",
             "args": [
                 "-Og",
                 "-std=gnu++20",

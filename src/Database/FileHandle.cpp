@@ -15,6 +15,8 @@ namespace Database{
             
             memcpy(dest, &pair.second, sizeof(pair.second));
             dest += sizeof(pair.second);
+
+
         }
         // copy locationsPosition
         *(FilePtrdiff*)dest = locationsPosition;
@@ -38,18 +40,19 @@ namespace Database{
         // Copy in devices field
         memcpy(&devices, source, sizeof(devices));
         source += sizeof(devices);
-
         // The number of devices given determines the number of device maps that will follow:
         for (   size_t i = 0 ; 
                 i < devices ; 
-                i ++, 
-                source += sizeof(MACAdress) + sizeof(size_t) 
+                i ++
             ) 
         {   
-            // Copy in the mapping.
-            MACAdress * mac = (MACAdress*) source;
-            size_t    * position = (size_t*) source + sizeof(MACAdress);
-            devicePositionMap[ *mac ] = *position;
+            MACAdress mac;
+            size_t position;
+            mac = *(MACAdress*)(source);
+            source += sizeof(MACAdress);
+            position = *(size_t*)(source);
+            source += sizeof(size_t);
+            devicePositionMap[ mac ] = position;
         }
 
         memcpy(&locationsPosition, source, sizeof(locationsPosition));
@@ -106,7 +109,6 @@ namespace Database{
         FileHeaderMap emptyMap;
         emptyMap.devices = 0;
         emptyMap.devicesPosition = sizeof(FileHeader) + emptyMap.getWrittenSize() + ANTIFRAG_PADDSIZE_HUGE;
-        std::cout << "devices pos: " << emptyMap.devicesPosition << "\n";
         emptyMap.locationsPosition = MIN_CACHESIZE - (MIN_CACHESIZE/4);
 
         
@@ -120,6 +122,7 @@ namespace Database{
             perror("Could not write: ");
             return DBFAILURE;
         }
+
         // }
         
         // Truncate the file to the minimum cache size ( will grow the file with zeros )
@@ -175,7 +178,7 @@ namespace Database{
         current_cachefile.map.start = fptr;
         current_cachefile.map.end = fptr + len_file;
         current_cachefile.header = (FileHeader*) fptr;
-        
+
         current_cachefile.headerMap.loadFromMemory( fptr + sizeof(FileHeader) );
 
         current_cachefile.devices.start = fptr + current_cachefile.headerMap.devicesPosition;
@@ -348,7 +351,8 @@ namespace Database{
 
         fileTasks.join();
 
-        current_cachefile.headerMap.writeToMemory( (FilePtr) current_cachefile.header + sizeof(FileHeader) );
+        current_cachefile.headerMap.writeToMemory( (FilePtr) current_cachefile.map.start + sizeof(FileHeader) );
+
 
         munmap(current_cachefile.map.start, current_cachefile.map.size());
         close(current_cachefile.fd);

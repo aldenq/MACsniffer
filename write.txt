@@ -1,0 +1,7 @@
+Creating new file: "dist/dump/maccache.MACSniffer"
+devices pos: 576
+Current Cache file: 
+Devices: 0
+Location: 0
+Devices (map): 0
+Writing map pair: 58220873567969, 576
