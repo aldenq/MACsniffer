@@ -23,16 +23,10 @@ int main(){
     d.locations.push_back({27,27});
 
     //Database::writeDevice(d);
-    Database::_base_writeDevice(d);
+    //Database::_base_writeDevice(d);
 
 
-    //Device d2 = Database::getDevice( 0x34f39a7ccee1  )->await();
-    Device d2 = Database::_base_loadDevice( 0x34f39a7ccee1 );
-    std::cout << (std::string)d2.addr << std::endl;
     
-    for (const auto& l : d2.locations) {
-        std::cout << "{ " << l.longitude << " , " << l.latitude << " }\n";
-    }
 
 
     Device dw2;
@@ -44,14 +38,37 @@ int main(){
 
     //Database::writeDevice(dw2);
 
-    Database::_base_writeDevice(dw2);    
+    //Database::_base_writeDevice(dw2);    
 
-    Device d3 = Database::_base_loadDevice(12345);
+    
+
+
+
+    Device another;
+    another.addr = 6789;
+    another.locations.push_back({1024,1024});
+    //Database::writeDevice(another);
+
+    Device anotherr = Database::getDevice(6789)->await();
+    std::cout << (std::string)anotherr.addr << std::endl;
+    for (const auto& l : anotherr.locations){
+        std::cout << l << std::endl;
+    }
+
+    Device d3 = Database::getDevice(12345)->await();
 
     std::cout << (std::string)d3.addr<<std::endl;
     
     for (const auto& l : d3.locations) {
         std::cout << l << std::endl;
+    }
+
+    Device d2 = Database::getDevice( 0x34f39a7ccee1  )->await();
+    //Device d2 = Database::_base_loadDevice( 0x34f39a7ccee1 );
+    std::cout << (std::string)d2.addr << std::endl;
+    
+    for (const auto& l : d2.locations) {
+        std::cout << "{ " << l.longitude << " , " << l.latitude << " }\n";
     }
 
 

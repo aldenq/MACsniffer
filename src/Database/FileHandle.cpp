@@ -65,7 +65,7 @@ namespace Database{
 
     FilePtrdiff FileHeaderMap::getDevicesEnd(  ){
 
-        auto min = std::min_element( 
+        auto max = std::max_element( 
             devicePositionMap.begin(), 
             devicePositionMap.end(), 
             [](auto a, auto b){ 
@@ -73,8 +73,9 @@ namespace Database{
             } 
         );
 
-        if (min != devicePositionMap.end()){
-            return min->second + sizeOfWrittenDevice(min->second);
+        if (max != devicePositionMap.end()){
+            size_t off = max->second;
+            return off + sizeOfWrittenDevice(off);
         }else {
             return -1;
         }
@@ -208,8 +209,6 @@ namespace Database{
 
     Location _base_loadLocation(size_t index){
 
-        //FilePtr ptr = current_cachefile.locations.start + ( index * sizeof(Location) );
-        //return *(Location*)(ptr);
 
         return ((Location*)current_cachefile.locations.start) [ index ];
 
@@ -229,16 +228,13 @@ namespace Database{
 
         Device out;
         out.addr = mac;
-        //fdevice += sizeof(MACAdress);
 
 
-        std::cout << locations << std::endl;
         for (;  locations;
                 locations --,
                 fdevice += sizeof(size_t)
             )
         {
-            std::cout << "Location index: " << *(size_t*)(fdevice) << std::endl;
             out.locations.push_back( _base_loadLocation( *(size_t*)(fdevice) ) );
         }
 
