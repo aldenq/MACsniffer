@@ -218,6 +218,59 @@ namespace Database{
 
     }
 
+    void defragmentDevices(){
+
+        puts("Defrag:");
+        // Copy the map into a vector for sorting
+        std::vector<std::pair<MACAdress, size_t> > sortedMap;
+        for (auto& pair : current_cachefile.headerMap.devicePositionMap) {
+            sortedMap.push_back(pair);
+        }
+
+        // Sort the map by position in decending order
+        std::sort( sortedMap.begin(), sortedMap.end(), [](const auto& a, const auto& b) {
+            return a.second < b.second;
+        } );
+
+        // Check the distance between each device to see if there is space between them
+        std::pair<MACAdress, size_t> prevPair = sortedMap.at(0);
+        for (size_t i = 1; i < sortedMap.size(); i++){
+            std::pair<MACAdress, size_t> pair = sortedMap.at(i);
+            // If there is a space between two adjacent devices
+            if ( pair.second - prevPair.second > sizeOfWrittenDevice(prevPair.second) ) {
+                // Slide the lower one up to the higher one
+                FilePtrdiff newSpot = prevPair.second + sizeOfWrittenDevice(prevPair.second);
+                FilePtr address = current_cachefile.map.start + newSpot;
+                // Move the memory
+                memmove( address, current_cachefile.map.start + pair.second, sizeOfWrittenDevice(pair.second));
+                // Update the map
+                current_cachefile.headerMap.devicePositionMap[pair.first] = newSpot;
+                puts("Defragmentation performed.");
+            }
+
+        }
+        // Check for a distance between the first device and the start of
+        // of the mapped device block
+        std::pair<MACAdress, size_t> firstPair = sortedMap.at(0);
+        FilePtr firstAddress = current_cachefile.map.start + firstPair.second;
+        // If the first device is not at the start of the mapped device block,
+        // The entire field can be shifted up to free up space.
+        if (firstAddress != current_cachefile.devices.start) {
+            puts("Performing Device Map Shift.");
+            FilePtrdiff diff = firstAddress - current_cachefile.devices.start;
+            // Shift the entire devices section up for more space
+            memmove(current_cachefile.devices.start, firstAddress, current_cachefile.devices.size() - diff);
+            // All of the mappings need to be updated
+            for ( auto& p : current_cachefile.headerMap.devicePositionMap ) {
+                p.second -= diff;
+            }
+
+        }
+
+
+    }
+
+
     Location _base_loadLocation(size_t index){
 
         // Using the start of the Locations map as an array of locations, and 
@@ -257,7 +310,7 @@ namespace Database{
 
         return out;
     }
-    
+
     size_t sizeToWrite(const Device& d){
         return sizeof(d.addr) + (d.locations.size() * sizeof(size_t))+sizeof(size_t);
     }
@@ -296,11 +349,26 @@ namespace Database{
     FilePtr resizeDevice(FilePtrdiff deviceLocation, size_t sizeofNew){
         FileDeviceNodeHeader* fdnh = (FileDeviceNodeHeader*)( current_cachefile.map.start + deviceLocation );
         size_t sizeOfDevice = sizeOfWrittenDevice(fdnh);
+        FilePtr nextOpenDeviceAddress;
+        
+        // If the device we are resizing is not already at the end:
+        if ( current_cachefile.headerMap.getDevicesEnd() != deviceLocation ){
+            // Find a new open address, and copy over existing data
+            nextOpenDeviceAddress = findNextDeviceAddress( sizeofNew );
 
-        FilePtr nextOpenDeviceAddress = findNextDeviceAddress( sizeofNew );
-        memcpy( nextOpenDeviceAddress, fdnh, sizeOfDevice );
-        memset( (char*)fdnh, 0, sizeOfDevice );
+            memcpy( nextOpenDeviceAddress, fdnh, sizeOfDevice );
+            memset( (char*)fdnh, 0, sizeOfDevice );
 
+        }
+        // If the device is already at the end
+        else {
+            // It can already be expanded with no modification
+            nextOpenDeviceAddress = (FilePtr) fdnh;
+
+        }
+
+        //fileTasks.launch(defragmentDevices);
+        defragmentDevices();
         return nextOpenDeviceAddress;
 
     }

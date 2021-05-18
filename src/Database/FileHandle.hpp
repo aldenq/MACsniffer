@@ -138,6 +138,8 @@ namespace Database{
     size_t _base_createLocationIndex(const Location& l);
 
 
+    void defragmentDevices();
+
     /**
      * Correctly free all resources,
      * and write final header map to the file.
