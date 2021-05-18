@@ -1,8 +1,9 @@
 namespace Database{
-    char* passnone(char* x) { return x;}
+
+
+
     void FileHeaderMap::writeToMemory(char* dest) const {
         // Copy each field into memory:
-        char* ogdest = dest; passnone(ogdest); 
         // copy devices
         memcpy(dest, &devices, sizeof(devices));
         dest+= sizeof(devices);
@@ -46,15 +47,17 @@ namespace Database{
                 i ++
             ) 
         {   
+            //Copy mac and position
             MACAdress mac;
             size_t position;
             mac = *(MACAdress*)(source);
             source += sizeof(MACAdress);
             position = *(size_t*)(source);
             source += sizeof(size_t);
+            // Apply the mac and position the the unordered_map
             devicePositionMap[ mac ] = position;
         }
-
+        // Copy remaining fields
         memcpy(&locationsPosition, source, sizeof(locationsPosition));
         source += sizeof(locationsPosition);
         memcpy(&devicesPosition, source, sizeof(devicesPosition));
@@ -64,7 +67,7 @@ namespace Database{
 
 
     FilePtrdiff FileHeaderMap::getDevicesEnd(  ){
-
+        // Find the largest file position in the map
         auto max = std::max_element( 
             devicePositionMap.begin(), 
             devicePositionMap.end(), 
@@ -72,11 +75,15 @@ namespace Database{
                 return a.second < b.second;
             } 
         );
-
+        // if the position exists:
         if (max != devicePositionMap.end()){
+            // Return the position + the size of the existing device.
+            // This yields the first valid address to begin a new device.
             size_t off = max->second;
             return off + sizeOfWrittenDevice(off);
-        }else {
+        }
+        // If the position doesn't exist, return -1 for external handle
+        else {
             return -1;
         }
 
@@ -192,13 +199,17 @@ namespace Database{
     }
 
     void setFile(const std::filesystem::path& p) {
+        // Check if the file exists already:
         if ( !std::filesystem::exists(p) ) {
+            // if not, create it
             std::clog << "Creating new file: " << p << "\n";
             dberr_t err = createNewCachefile(p);
             if (err == DBFAILURE){
                 throw NoCachefileError(p);
             }
         }
+        // Weather it was just created or it already existed,
+        // attempt to load it
         dberr_t err = loadCacheFile(p);
         if (err == DBFAILURE){
           throw NoCachefileError(p);
@@ -209,7 +220,8 @@ namespace Database{
 
     Location _base_loadLocation(size_t index){
 
-
+        // Using the start of the Locations map as an array of locations, and 
+        // taking the index:
         return ((Location*)current_cachefile.locations.start) [ index ];
 
     }
@@ -217,9 +229,13 @@ namespace Database{
 
     Device _base_loadDevice(MACAdress mac){
 
+        // Get the file position from the map
         FilePtrdiff pos = current_cachefile.headerMap.devicePositionMap[mac];
 
+        // Get the address based on the position
         FilePtr fdevice = current_cachefile.map.start + pos;
+
+        // Interperate the address as a FileDeviceNodeHeader to get the MAC and locationCount
         FileDeviceNodeHeader * fdnh = (FileDeviceNodeHeader*) fdevice;
 
 
@@ -229,17 +245,19 @@ namespace Database{
         Device out;
         out.addr = mac;
 
-
+        // For each location: load
         for (;  locations;
                 locations --,
                 fdevice += sizeof(size_t)
             )
         {
+            // *(size_t*)(fdevice) returns each index stored in the array
             out.locations.push_back( _base_loadLocation( *(size_t*)(fdevice) ) );
         }
 
         return out;
     }
+    
     size_t sizeToWrite(const Device& d){
         return sizeof(d.addr) + (d.locations.size() * sizeof(size_t))+sizeof(size_t);
     }

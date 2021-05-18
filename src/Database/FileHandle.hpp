@@ -89,21 +89,59 @@ namespace Database{
 
     };
 
+    /**
+     * Determine the number of bytes allocated to a device already in the cache
+     */
     size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh );
+    /**
+     * Determine the number of bytes allocated to a device already in the cache
+     */
     size_t sizeOfWrittenDevice( FilePtrdiff off );
+    /**
+     * Determine the number of bytes required to write a given device to cache
+     */
     size_t sizeToWrite(const Device& d);
 
+    /**
+     * Load/Create&load a new/existing cachefile
+     */
     void setFile(const std::filesystem::path& p);
 
+    /**
+     * Create a new cache file with the correct headers at the provided path
+     */
     dberr_t createNewCachefile(const std::filesystem::path& p);
+    /**
+     * Load an existing cache file into the system
+     * (populate current_cachefile, map memory, etc...)
+     */
     dberr_t loadCacheFile(const std::filesystem::path& p); 
 
+
+    /**
+     * Load a device out of the file
+     */
     Device _base_loadDevice(MACAdress mac);
+    /**
+     * Load a location out of the file
+     */
     Location _base_loadLocation(size_t index);
 
+    /**
+     * Write a new or existing device
+     */
     void _base_writeDevice(const Device& d);
+    /**
+     * Given a location, either determine it's existing index and return it,
+     * or allocated it as a new location and return its new index.
+     */
     size_t _base_createLocationIndex(const Location& l);
 
+
+    /**
+     * Correctly free all resources,
+     * and write final header map to the file.
+     */
     void cleanExit();
     
 

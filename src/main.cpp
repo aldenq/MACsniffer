@@ -20,11 +20,10 @@ int main(){
     d.addr = 0x34f39a7ccee1;
     d.locations.push_back({300,400});
     d.locations.push_back({500,600});
-    d.locations.push_back({27,27});
+    d.locations.push_back({37,37});
 
-    //Database::writeDevice(d);
+    Database::writeDevice(d);
     //Database::_base_writeDevice(d);
-
 
     
 
@@ -32,11 +31,11 @@ int main(){
     Device dw2;
     dw2.addr = 12345;
     dw2.locations.push_back({32,32});
-    dw2.locations.push_back({35,35});
+    dw2.locations.push_back({32,32});
     dw2.locations.push_back({206,206});
 
 
-    //Database::writeDevice(dw2);
+    Database::writeDevice(dw2);
 
     //Database::_base_writeDevice(dw2);    
 
@@ -47,9 +46,14 @@ int main(){
     Device another;
     another.addr = 6789;
     another.locations.push_back({1024,1024});
-    //Database::writeDevice(another);
+    Database::writeDevice(another);
 
     Device anotherr = Database::getDevice(6789)->await();
+    
+    
+    
+    
+    std::cout << "Location Stores Count: " << Database::current_cachefile.header->locations << '\n';
     std::cout << (std::string)anotherr.addr << std::endl;
     for (const auto& l : anotherr.locations){
         std::cout << l << std::endl;

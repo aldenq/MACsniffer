@@ -12,6 +12,8 @@ namespace Database{
         return false;
 
     }
+
+    [[nodiscard]]
     async::Promise<Device> getDevice(MACAdress mac){
 
         return fileTasks.execute<Device> ( [mac](){ return _base_loadDevice(mac); } );
@@ -29,6 +31,14 @@ namespace Database{
     }
 
 
+    [[nodiscard]] 
+    async::Promise<bool> writeDeviceSync(Device d){
+        return fileTasks.execute ( [d]{
+
+            _base_writeDevice(d);
+
+        } );
+    }
 
 
 };
