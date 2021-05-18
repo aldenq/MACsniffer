@@ -229,7 +229,9 @@ namespace Database{
 
         Device out;
         out.addr = mac;
-        fdevice += sizeof(MACAdress);
+        //fdevice += sizeof(MACAdress);
+
+
         std::cout << locations << std::endl;
         for (;  locations;
                 locations --,
@@ -243,17 +245,51 @@ namespace Database{
         return out;
     }
     size_t sizeToWrite(const Device& d){
-        return sizeof(d.addr) + (d.locations.size() * sizeof(size_t));
+        return sizeof(d.addr) + (d.locations.size() * sizeof(size_t))+sizeof(size_t);
     }
     size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh ){
-        return sizeof(fdnh->mac) + (fdnh->locationCount * sizeof(size_t)) + sizeof(fdnh->locationCount);
+        return sizeof(MACAdress) + (fdnh->locationCount * sizeof(size_t)) + sizeof(size_t);
     }
     size_t sizeOfWrittenDevice( FilePtrdiff off ){
-        return sizeOfWrittenDevice( (FileDeviceNodeHeader*) current_cachefile.map.start + off );
+        return sizeOfWrittenDevice( (FileDeviceNodeHeader*) (current_cachefile.map.start + off) );
     }
 
 
+    FilePtr findNextDeviceAddress(size_t sizeToWriteThis){
+        FilePtr address = nullptr;
 
+        // Get the location of the end of the final device in the file
+        FilePtrdiff newspot = current_cachefile.headerMap.getDevicesEnd();
+
+
+        // Normal conditions:
+        if (newspot != -1ULL){
+            address = current_cachefile.map.start + newspot;
+        // When there are no existing devices:
+        }else{
+            address = current_cachefile.devices.start;
+        }
+
+        size_t extraspace = current_cachefile.devices.end - (address + sizeToWriteThis);
+        if (extraspace <= 0) {
+            puts("Resize File");
+        }
+        
+        return address;
+    }
+
+
+    FilePtr resizeDevice(FilePtrdiff deviceLocation, size_t sizeofNew){
+        FileDeviceNodeHeader* fdnh = (FileDeviceNodeHeader*)( current_cachefile.map.start + deviceLocation );
+        size_t sizeOfDevice = sizeOfWrittenDevice(fdnh);
+
+        FilePtr nextOpenDeviceAddress = findNextDeviceAddress( sizeofNew );
+        memcpy( nextOpenDeviceAddress, fdnh, sizeOfDevice );
+        memset( (char*)fdnh, 0, sizeOfDevice );
+
+        return nextOpenDeviceAddress;
+
+    }
 
 
     void _base_writeDevice(const Device& d){
@@ -266,28 +302,17 @@ namespace Database{
             if (sizeOfWrittenDevice(existingLocation) == sizeToWriteThis){
                 address = current_cachefile.map.start + existingLocation;
             }else {
+                puts("Resize");
+                address = resizeDevice( existingLocation, sizeToWriteThis );
+                current_cachefile.headerMap.devicePositionMap[d.addr] = address-current_cachefile.map.start;
                 //resize
             }
 
         }else{
-            // Get the location of the end of the final device in the file
-            FilePtrdiff newspot = current_cachefile.headerMap.getDevicesEnd();
-
             current_cachefile.header->devices ++;
             current_cachefile.headerMap.devices ++;
 
-            // Normal conditions:
-            if (newspot != -1ULL){
-                address = current_cachefile.map.start + newspot;
-            // When there are no existing devices:
-            }else{
-                address = current_cachefile.devices.start;
-            }
-
-            size_t extraspace = current_cachefile.devices.end - (address + sizeToWriteThis);
-            if (extraspace <= 0) {
-                // resize
-            }
+            address = findNextDeviceAddress(sizeToWriteThis);
 
             current_cachefile.headerMap.devicePositionMap[d.addr] = address - current_cachefile.map.start;
 
@@ -298,12 +323,7 @@ namespace Database{
         fdnh->locationCount = d.locations.size();
         address += sizeof(FileDeviceNodeHeader);
         size_t *indexes = (size_t*)address;
-        for ( 
-                size_t i = 0;
-                i < d.locations.size();
-                i ++,
-                address += sizeof(size_t)     
-            )
+        for ( size_t i = 0; i < d.locations.size(); i++ )
         {
 
             // *(size_t*)(address) = _base_createLocationIndex(d.locations.at(i));
@@ -337,9 +357,10 @@ namespace Database{
 
             locationArray[i] = l;
             current_cachefile.header->locations++;
-            return current_cachefile.header->locations-1;
+            return i;
 
         }else{
+            puts("resize");
             // resize
         }
         
