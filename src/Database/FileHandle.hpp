@@ -87,6 +87,13 @@ namespace Database{
         MACAdress mac;
         size_t locationCount;
 
+        ScalarDeviceStats stats;
+
+        size_t load(Device& d);
+        void deposit(const Device& d);
+        size_t writtenSize();
+
+        static size_t staticSize() noexcept;
     };
 
     /**

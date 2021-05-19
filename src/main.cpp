@@ -22,7 +22,7 @@ int main(){
     d.locations.push_back({500,600});
     d.locations.push_back({37,37});
     d.locations.push_back({35,35});
-    d.locations.push_back({206,206});
+    
 
     Database::writeDevice(d);
     //Database::_base_writeDevice(d);
@@ -35,7 +35,8 @@ int main(){
     dw2.locations.push_back({32,32});
     dw2.locations.push_back({32,32});
     dw2.locations.push_back({206,206});
-    // dw2.locations.push_back({69,69});
+    dw2.locations.push_back({69,69});
+    dw2.locations.push_back({6,7});
 
 
     Database::writeDevice(dw2);
@@ -49,6 +50,8 @@ int main(){
     Device another;
     another.addr = 6789;
     another.locations.push_back({1024,1024});
+    another.locations.push_back({1024,1023});
+
     Database::writeDevice(another);
 
     Device anotherr = Database::getDevice(6789)->await();

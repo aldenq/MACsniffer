@@ -91,6 +91,66 @@ namespace Database{
 
     }
 
+    template<typename T>
+    void loadField(T& dest, FilePtr& source)
+        { dest = *(T*)(source); source += sizeof(T); }
+
+    template<typename T>
+    void depositField(FilePtr& dest, T& source)
+        { *(T*)(dest) = source; dest += sizeof(T); }
+
+    /**
+     * @returns LocationCount
+     */
+    size_t FileDeviceNodeHeader::load(Device& d){
+
+        FilePtr address = (FilePtr) this;
+        // d.addr = *(size_t*)(address);
+        // address += sizeof(size_t);
+        // size_t locations = *(size_t*)(address);
+        // address += sizeof(size_t);
+        // d.stats.bytesTransfered = *(size_t*)(address);
+        size_t addr;
+        loadField(addr, address);
+        d.addr = addr;
+        size_t locations;
+        loadField(locations, address);
+        loadField(d.stats.bytesTransfered, address);
+
+
+        return locations;
+
+    }
+
+    void FileDeviceNodeHeader::deposit(const Device& d){
+
+        FilePtr address = (FilePtr) this;
+        // *(size_t*)(address) = d.addr.raw();
+        // address += sizeof(size_t);
+        // *(size_t*)(address) = d.locations.size();
+        // address += sizeof(size_t);
+        // *(size_t*)(address) = d.stats.bytesTransfered;
+        // address += sizeof(size_t);
+        size_t rawaddr = d.addr.raw();
+        size_t locations = d.locations.size();
+        size_t bytesTransfered = d.stats.bytesTransfered;
+        depositField(address, rawaddr);
+        depositField(address, locations);
+        depositField(address, bytesTransfered);
+
+    
+    }
+
+    size_t FileDeviceNodeHeader::staticSize() noexcept{
+        return sizeof(size_t) + sizeof(size_t) + ScalarDeviceStats::writtenSize();
+    }
+    size_t FileDeviceNodeHeader::writtenSize(){
+        return staticSize() + (*((size_t*)(this)+1) * sizeof(size_t));
+    }
+
+
+
+
 
 
 
@@ -291,10 +351,12 @@ namespace Database{
         FileDeviceNodeHeader * fdnh = (FileDeviceNodeHeader*) fdevice;
 
 
-        size_t locations = fdnh->locationCount;
-        fdevice += sizeof(FileDeviceNodeHeader);
+        //size_t locations = fdnh->locationCount;
+        //fdevice += sizeof(FileDeviceNodeHeader);
 
         Device out;
+        size_t locations = fdnh->load(out);
+        fdevice += FileDeviceNodeHeader::staticSize();
         out.addr = mac;
 
         // For each location: load
@@ -314,7 +376,7 @@ namespace Database{
         return sizeof(d.addr) + (d.locations.size() * sizeof(size_t))+sizeof(size_t);
     }
     size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh ){
-        return sizeof(MACAdress) + (fdnh->locationCount * sizeof(size_t)) + sizeof(size_t);
+        return (fdnh->writtenSize());
     }
     size_t sizeOfWrittenDevice( FilePtrdiff off ){
         return sizeOfWrittenDevice( (FileDeviceNodeHeader*) (current_cachefile.map.start + off) );
@@ -400,9 +462,10 @@ namespace Database{
         }
 
         FileDeviceNodeHeader* fdnh = (FileDeviceNodeHeader*) address;
-        fdnh->mac = d.addr;
-        fdnh->locationCount = d.locations.size();
-        address += sizeof(FileDeviceNodeHeader);
+        fdnh->deposit(d);
+        //fdnh->mac = d.addr;
+        //fdnh->locationCount = d.locations.size();
+        address += (FileDeviceNodeHeader::staticSize());
         size_t *indexes = (size_t*)address;
         for ( size_t i = 0; i < d.locations.size(); i++ )
         {
