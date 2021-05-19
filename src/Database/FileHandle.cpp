@@ -220,7 +220,6 @@ namespace Database{
 
     void defragmentDevices(){
 
-        puts("Defrag:");
         // Copy the map into a vector for sorting
         std::vector<std::pair<MACAdress, size_t> > sortedMap;
         for (auto& pair : current_cachefile.headerMap.devicePositionMap) {
@@ -245,8 +244,9 @@ namespace Database{
                 memmove( address, current_cachefile.map.start + pair.second, sizeOfWrittenDevice(pair.second));
                 // Update the map
                 current_cachefile.headerMap.devicePositionMap[pair.first] = newSpot;
-                puts("Defragmentation performed.");
             }
+
+            prevPair = pair;
 
         }
         // Check for a distance between the first device and the start of
@@ -256,7 +256,6 @@ namespace Database{
         // If the first device is not at the start of the mapped device block,
         // The entire field can be shifted up to free up space.
         if (firstAddress != current_cachefile.devices.start) {
-            puts("Performing Device Map Shift.");
             FilePtrdiff diff = firstAddress - current_cachefile.devices.start;
             // Shift the entire devices section up for more space
             memmove(current_cachefile.devices.start, firstAddress, current_cachefile.devices.size() - diff);
