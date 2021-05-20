@@ -513,14 +513,121 @@ namespace Database{
 
     }
 
+    void writeMapToHeader(){
+        
+        // The location to write the map at will always be the same:
+        FilePtr address =  (FilePtr) current_cachefile.map.start + sizeof(FileHeader);
+        // Determine the currently available amount of space
+        FilePtrdiff space = (current_cachefile.devices.start - address);
+        // Determine the size needed to write the map
+        size_t sizeToWriteThis = current_cachefile.headerMap.getWrittenSize();
+        // if there is enough space, simply write it
+        if (space > sizeToWriteThis){
+            current_cachefile.headerMap.writeToMemory( address );
+        } else {
+            // If there is not enough space, the next step
+            // is to check if the devices can be shifted out of the way.
+            FilePtrdiff endOfDevices = current_cachefile.headerMap.getDevicesEnd();
+            // Determine the remaining space after all of the devices
+            FilePtrdiff endspace = current_cachefile.devices.end - (current_cachefile.map.start+endOfDevices);
+            // If the devices can be shifted, do so
+            if (endspace > sizeToWriteThis){
+                // move all the memory over
+                memmove( 
+                        current_cachefile.devices.start + sizeToWriteThis, 
+                        current_cachefile.devices.start, 
+                        current_cachefile.devices.size() - endspace
+                    );
+                // Update the devices position
+                current_cachefile.headerMap.devicesPosition = sizeof(FileHeader) + sizeToWriteThis;
+                // Update the map
+                for (auto& p : current_cachefile.headerMap.devicePositionMap) {
+                    p.second += sizeToWriteThis;
+                }
+                // Finally, write to the address now that there is enough room
+                current_cachefile.headerMap.writeToMemory(address);
+
+            }else {
+                //resize:
+                current_cachefile.headerMap.writeToMemory(address);
+            }
+
+        }
+
+
+    }
+
+    void reallocFile(){
+        // Much like adding to a vector, reallocFile will double the capacity
+        // of the current file.
+        // If the user wishes to shrink the file back down for storage reasons,
+        // there will be a compression function to do so
+        
+        // ftruncate64 will expand the file itself to double its current size
+        int err = ftruncate64(current_cachefile.fd, current_cachefile.map.size()*2);
+        if (err) {
+            perror("Could not truncate for realloc");
+            exit(1);
+        }
+        // Now that the file has been expanded, the memory map
+        // needs to be remapped with the new size
+        FilePtr maperr = (char*)mremap(
+            current_cachefile.map.start, 
+            current_cachefile.map.size(),
+            current_cachefile.map.size()*2,
+            MREMAP_MAYMOVE
+        );
+        if (maperr == MAP_FAILED){
+            perror("Could not remap file after truncate");
+            exit(1);
+        }
+
+        // Now that the file and memory map are expanded,
+        // the internal headers/maps need to be updated
+        // with the new information.
+        size_t oldsize = current_cachefile.map.size();
+        size_t newsize = oldsize*2;
+        current_cachefile.map.start = maperr;
+        current_cachefile.map.end = current_cachefile.map.start + newsize;
+        
+        MappedChunk newLocations;
+        newLocations.end = current_cachefile.map.end;
+        newLocations.start = current_cachefile.map.end - current_cachefile.locations.size();
+        
+        current_cachefile.headerMap.locationsPosition = newLocations.start - current_cachefile.map.start;
+        
+
+        memmove (
+            newLocations.start,
+            current_cachefile.locations.start,
+            current_cachefile.locations.size()
+        );
+
+        memset(
+            current_cachefile.locations.start,
+            0,
+            current_cachefile.locations.size()
+        );
+
+        current_cachefile.locations = newLocations;
+
+        size_t devicesSize = current_cachefile.devices.size();
+        current_cachefile.devices.start = 
+            current_cachefile.map.start + 
+            sizeof(FileHeader) + 
+            current_cachefile.headerMap.getWrittenSize();
+
+        current_cachefile.devices.end = current_cachefile.devices.start + devicesSize;
+
+    }  
+
 
 
     void cleanExit(){
 
         fileTasks.join();
 
-        current_cachefile.headerMap.writeToMemory( (FilePtr) current_cachefile.map.start + sizeof(FileHeader) );
-
+        writeMapToHeader();
 
         munmap(current_cachefile.map.start, current_cachefile.map.size());
         close(current_cachefile.fd);

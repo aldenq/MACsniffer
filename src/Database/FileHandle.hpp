@@ -144,8 +144,12 @@ namespace Database{
      */
     size_t _base_createLocationIndex(const Location& l);
 
+    void reallocFile();
+
 
     void defragmentDevices();
+
+    void writeMapToHeader();
 
     /**
      * Correctly free all resources,

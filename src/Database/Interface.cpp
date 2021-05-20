@@ -41,4 +41,16 @@ namespace Database{
     }
 
 
+
+    [[nodiscard]]
+    async::Promise<bool> flushBuffersToFile(){
+        return fileTasks.execute ( writeMapToHeader );
+    }
+
+    [[nodiscard]]
+    async::Promise<size_t> absoluteCompress(){
+        return fileTasks.execute<size_t> ( [] { return 0ULL; } );
+    }
+
+
 };

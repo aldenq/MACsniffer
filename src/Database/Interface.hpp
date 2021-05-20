@@ -50,6 +50,12 @@ namespace Database{
     async::Promise<bool> writeDeviceSync(Device d);
 
 
+    [[nodiscard]]
+    async::Promise<bool> flushBuffersToFile();
+
+    [[nodiscard]]
+    async::Promise<size_t> absoluteCompress();
+
 
 
 
