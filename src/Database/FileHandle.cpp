@@ -373,7 +373,8 @@ namespace Database{
     }
 
     size_t sizeToWrite(const Device& d){
-        return sizeof(d.addr) + (d.locations.size() * sizeof(size_t))+sizeof(size_t);
+        //     \/ Address               \/ Locations                    \/ LocationC            \/ Scalars
+        return sizeof(size_t) + (d.locations.size() * sizeof(size_t))+sizeof(size_t) + ScalarDeviceStats::writtenSize();
     }
     size_t sizeOfWrittenDevice( FileDeviceNodeHeader* fdnh ){
         return (fdnh->writtenSize());
