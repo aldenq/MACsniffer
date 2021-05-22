@@ -21,6 +21,7 @@ namespace Database{
         FileHeaderMap headerMap;
 
         fd_t fd;
+        std::filesystem::path filepath;
 
     };
     

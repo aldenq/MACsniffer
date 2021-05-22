@@ -241,7 +241,7 @@ namespace Database{
         }
 
         // Load data into the current_cachefile variable:
-
+        current_cachefile.filepath = p;
         current_cachefile.fd = f;
         current_cachefile.map.start = fptr;
         current_cachefile.map.end = fptr + len_file;
@@ -595,20 +595,25 @@ namespace Database{
         newLocations.end = current_cachefile.map.end;
         newLocations.start = current_cachefile.map.end - current_cachefile.locations.size();
         
+        MappedChunk oldLocations;
+        oldLocations.start = current_cachefile.map.end - current_cachefile.locations.size();
+        oldLocations.end = current_cachefile.map.end;
+
         current_cachefile.headerMap.locationsPosition = newLocations.start - current_cachefile.map.start;
         
 
         memmove (
             newLocations.start,
-            current_cachefile.locations.start,
+            oldLocations.start,
             current_cachefile.locations.size()
         );
 
-        memset(
-            current_cachefile.locations.start,
-            0,
-            current_cachefile.locations.size()
-        );
+        // memset(
+        //     oldLocations.start,
+        //     0,
+        //     current_cachefile.locations.size()
+        // );
+
 
         current_cachefile.locations = newLocations;
 
@@ -619,6 +624,14 @@ namespace Database{
             current_cachefile.headerMap.getWrittenSize();
 
         current_cachefile.devices.end = current_cachefile.devices.start + devicesSize;
+
+        current_cachefile.header = (FileHeader*) current_cachefile.map.start;
+
+        writeMapToHeader();
+        munmap(current_cachefile.map.start, current_cachefile.map.size());
+        close(current_cachefile.fd);
+
+        loadCacheFile(current_cachefile.filepath);
 
     }  
 
